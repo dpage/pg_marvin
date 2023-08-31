@@ -107,9 +107,9 @@ pg_marvin includes various machine learning functions. These are divided into re
 
 ### Sentiment Analysis
 
-Sentiment analysis is used to gauge whether a text string is positive or negative. The following functions can be used
-as shown in the examples to analyse a single or multiple strings. They return values indicating the sentiment in the 
-form of a label (POSITIVE or NEGATIVE) and a score.
+Sentiment analysis is used to gauge whether a text string is positive or negative or attreibute an emotion to it. The 
+following functions can be used as shown in the examples to analyse a single or multiple strings. They return values 
+indicating the sentiment in the form of a label and a score.
 
 ```sql
 pg_marvin=# SELECT * FROM marvin.analyse_sentiment('I am very happy today');
@@ -156,3 +156,15 @@ pg_marvin=# SELECT * FROM marvin.analyse_sentiment('{"I am very happy", "I am ve
 
 Note that different models may return different values for labels - as can be seen in the examples above, the default
 model returns *POSITIVE* or *NEGATIVE*, whilst the Cardiff NLP model returns *positive* or *negative*.
+
+Some models may offer more complex analysis, e.g:
+
+```sql
+pg_marvin=# SELECT * FROM marvin.analyse_sentiment('{"I am very happy", "I am very sad", "I am outraged!"}'::text[], model => 'bhadresh-savani/distilbert-base-uncased-emotion');
+  label  |       score        
+---------+--------------------
+ joy     | 0.9986562728881836
+ sadness | 0.9982013702392578
+ anger   | 0.9968796968460083
+(3 rows)
+```

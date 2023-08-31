@@ -1,0 +1,5 @@
+# pg_marvin extension
+comment = 'Machine learning and analytics for PostgreSQL'
+default_version = '1.0'
+schema = marvin
+requires = 'plpy_venv'

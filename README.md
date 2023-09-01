@@ -216,3 +216,5 @@ pg_marvin=# SELECT * FROM marvin.translate_text('{"Hello, how are you?", "I am v
 (2 rows)
 ```
 
+You can also pass the *model* parameter to use a specific model for the translation. In this case, the source and
+target language specifiers will have no effect. 

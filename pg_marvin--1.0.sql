@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION @extschema@.create_venv()
 AS $BODY$
     SELECT plpy_venv.create_venv('marvin');
     SELECT plpy_venv.activate_venv('marvin');
-    SELECT plpy_venv.pip_install('{transformers[torch]}');
+    SELECT plpy_venv.pip_install('{transformers[torch], sentencepiece}');
 $BODY$;
 
 REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.create_venv() FROM PUBLIC;
@@ -18,7 +18,7 @@ COMMENT ON FUNCTION @extschema@.create_venv() IS 'Create a virtual environment f
 --
 -- Run a pipeline task
 --
-CREATE OR REPLACE FUNCTION run_pipeline(data IN text[], task IN text, model IN text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION @extschema@.run_pipeline(data IN text[], task IN text, model IN text DEFAULT NULL)
     RETURNS json
     LANGUAGE plpython3u
 AS $BODY$
@@ -39,7 +39,7 @@ COMMENT ON FUNCTION @extschema@.run_pipeline(text[], text, text) IS 'Run a pipel
 --
 -- Analyse the sentiment of an array of text strings
 --
-CREATE OR REPLACE FUNCTION analyse_sentiment(data IN text[], model IN text DEFAULT NULL, label OUT text, score OUT float8)
+CREATE OR REPLACE FUNCTION @extschema@.analyse_sentiment(data IN text[], model IN text DEFAULT NULL, label OUT text, score OUT float8)
     RETURNS SETOF record
     LANGUAGE sql
 AS $BODY$
@@ -57,7 +57,7 @@ COMMENT ON FUNCTION @extschema@.analyse_sentiment(text[], text) IS 'Analyse the 
 --
 -- Analyse the sentiment of a text string
 --
-CREATE OR REPLACE FUNCTION analyse_sentiment(data IN text, model IN text DEFAULT NULL, label OUT text, score OUT float8)
+CREATE OR REPLACE FUNCTION @extschema@.analyse_sentiment(data IN text, model IN text DEFAULT NULL, label OUT text, score OUT float8)
     RETURNS record
     LANGUAGE sql
 AS $BODY$
@@ -70,3 +70,39 @@ $BODY$;
 REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.analyse_sentiment(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION @extschema@.analyse_sentiment(text, text) TO CURRENT_USER;
 COMMENT ON FUNCTION @extschema@.analyse_sentiment(text, text) IS 'Analyse the sentiment of a text string.';
+
+
+--
+-- Translate an array of text strings from one language to another
+--
+CREATE OR REPLACE FUNCTION @extschema@.translate_text(data IN text[], source_lang IN text, target_lang IN text, model IN text DEFAULT NULL, translation OUT text)
+    RETURNS SETOF text
+    LANGUAGE sql
+AS $BODY$
+SELECT * FROM 
+    json_to_recordset(
+        marvin.run_pipeline(data, 'translation_' || source_lang || '_to_' || target_lang, model => model)
+    ) AS x(translation_text text);
+$BODY$;
+
+REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.translate_text(text[], text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION @extschema@.translate_text(text[], text, text, text) TO CURRENT_USER;
+COMMENT ON FUNCTION @extschema@.translate_text(text[], text, text, text) IS 'Translate an array of text strings from one language to another.';
+
+
+--
+-- Translate a text string from one language to another
+--
+CREATE OR REPLACE FUNCTION @extschema@.translate_text(data IN text, source_lang IN text, target_lang IN text, model IN text DEFAULT NULL, translation OUT text)
+    RETURNS text
+    LANGUAGE sql
+AS $BODY$
+SELECT * FROM 
+    json_to_recordset(
+        marvin.run_pipeline(ARRAY[data], 'translation_' || source_lang || '_to_' || target_lang, model => model)
+    ) AS x(translation_text text) LIMIT 1;
+$BODY$;
+
+REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.translate_text(text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION @extschema@.translate_text(text, text, text, text) TO CURRENT_USER;
+COMMENT ON FUNCTION @extschema@.translate_text(text, text, text, text) IS 'Translate a text string from one language to another.';

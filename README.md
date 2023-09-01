@@ -191,3 +191,28 @@ pg_marvin=# SELECT * FROM marvin.analyse_sentiment('{"I am very happy", "I am ve
  anger   | 0.9968796968460083
 (3 rows)
 ```
+
+### Text Translation
+
+These functions translate text from one spoken language to another. To translate a single string, from English to 
+French:
+
+```sql
+pg_marvin=# SELECT * FROM marvin.translate_text('Hello, how are you?', 'en', 'fr');
+         translation         
+-----------------------------
+ Bonjour, comment êtes-vous?
+(1 row)
+```
+
+Or to translate an array of strings from English to German:
+
+```sql
+pg_marvin=# SELECT * FROM marvin.translate_text('{"Hello, how are you?", "I am very well, thank you."}'::text[], 'en', 'de');
+          translation           
+--------------------------------
+ Hallo, wie sind Sie?
+ Ich bin sehr gut, danke Ihnen.
+(2 rows)
+```
+

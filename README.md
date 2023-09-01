@@ -105,6 +105,29 @@ pg_marvin includes various machine learning functions. These are divided into re
 > Many of the following functions will download and cache a pre-trained model upon first use. This means they may take
 > additional time to run the first time they are executed.
 
+### Low Level Functions
+
+These functions provide low-level access to Hugging Face Transformers through an SQL interface. See
+https://huggingface.co/docs/transformers/pipeline_tutorial for more information.
+
+```sql
+pg_marvin=# SELECT marvin.run_pipeline('{"I am very happy", "I am very sad"}'::text[], 'sentiment-analysis', model => 'bhadresh-savani/distilbert-base-uncased-emotion');
+                                            run_pipeline                                            
+----------------------------------------------------------------------------------------------------
+ [{"label": "joy", "score": 0.9986562728881836}, {"label": "sadness", "score": 0.9982013702392578}]
+(1 row)
+```
+
+The parameters accepted are:
+
+* A *text[]* array of input data to analyse.
+* The task to run. See https://huggingface.co/docs/transformers/v4.32.1/en/main_classes/pipelines#transformers.pipeline.task
+  for the available options. Note that only tasks for which there are corresponding high-level functions below in the
+  following sections have been tested with pg_marvin.
+* An optional model to use from https://huggingface.co/models.
+
+The analysis results are returned as a single JSON document.
+
 ### Sentiment Analysis
 
 Sentiment analysis is used to gauge whether a text string is positive or negative or attreibute an emotion to it. The 

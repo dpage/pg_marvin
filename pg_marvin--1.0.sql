@@ -16,18 +16,37 @@ COMMENT ON FUNCTION @extschema@.create_venv() IS 'Create a virtual environment f
 
 
 --
+-- Run a pipeline task
+--
+CREATE OR REPLACE FUNCTION run_pipeline(data IN text[], task IN text, model IN text DEFAULT NULL)
+    RETURNS json
+    LANGUAGE plpython3u
+AS $BODY$
+from transformers import pipeline
+import json
+
+plpy.execute("SELECT plpy_venv.activate_venv('marvin');")
+classifier = pipeline(task, model=model)
+
+return json.dumps(classifier(data))
+$BODY$;
+
+REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.run_pipeline(text[], text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION @extschema@.run_pipeline(text[], text, text) TO CURRENT_USER;
+COMMENT ON FUNCTION @extschema@.run_pipeline(text[], text, text) IS 'Run a pipeline task.';
+
+
+--
 -- Analyse the sentiment of an array of text strings
 --
 CREATE OR REPLACE FUNCTION analyse_sentiment(data IN text[], model IN text DEFAULT NULL, label OUT text, score OUT float8)
     RETURNS SETOF record
-    LANGUAGE plpython3u
+    LANGUAGE sql
 AS $BODY$
-from transformers import pipeline
-
-plpy.execute("SELECT plpy_venv.activate_venv('marvin');")
-classifier = pipeline("sentiment-analysis", model=model)
-
-return classifier(data)
+SELECT * FROM 
+    json_to_recordset(
+        marvin.run_pipeline(data, 'sentiment-analysis', model => model)
+    ) AS x(label text, score float);
 $BODY$;
 
 REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.analyse_sentiment(text[], text) FROM PUBLIC;
@@ -42,7 +61,10 @@ CREATE OR REPLACE FUNCTION analyse_sentiment(data IN text, model IN text DEFAULT
     RETURNS record
     LANGUAGE sql
 AS $BODY$
-SELECT * FROM marvin.analyse_sentiment(ARRAY[data], model) LIMIT 1;
+SELECT * FROM 
+    json_to_recordset(
+        marvin.run_pipeline(ARRAY[data], 'sentiment-analysis', model => model)
+    ) AS x(label text, score float) LIMIT 1;
 $BODY$;
 
 REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.analyse_sentiment(text, text) FROM PUBLIC;

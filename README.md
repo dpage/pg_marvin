@@ -218,3 +218,27 @@ pg_marvin=# SELECT * FROM marvin.translate_text('{"Hello, how are you?", "I am v
 
 You can also pass the *model* parameter to use a specific model for the translation. In this case, the source and
 target language specifiers will have no effect. 
+
+### Image Classification
+
+This function will classify an image (stored as *bytea* data in a format supported by the Pillow Python library) using
+the specified model, which can be either a local directory or a library from Hugging Face. It will return the label and
+score for which there is the highest confidence:
+
+```sql
+pg_marvin=# SELECT f.file, c.* FROM food f, marvin.classify_image(image, model => '/path/to/hotdog-not-hotdog') AS c 
+pg_marvin-# ;
+       file        |   label   |       score        
+-------------------+-----------+--------------------
+ cheeseburger1.jpg | nothotdog | 0.9873936176300049
+ hotdog1.jpg       | hotdog    | 0.9967953562736511
+ hotdog2.jpg       | hotdog    | 0.9966788291931152
+ hotdog3.jpg       | hotdog    | 0.9969465136528015
+ salmon1.jpg       | nothotdog | 0.9948639273643494
+ steak1.jpg        | nothotdog | 0.9947286248207092
+ vegetables1.jpg   | nothotdog | 0.9951352477073669
+ vegetables2.jpg   | nothotdog | 0.9940209984779358
+ pizza1.jpg        | nothotdog | 0.9869404435157776
+ calzone1.jpg      | nothotdog | 0.9942871928215027
+(10 rows)
+```

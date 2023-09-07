@@ -221,9 +221,12 @@ target language specifiers will have no effect.
 
 ### Image Classification
 
-This function will classify an image (stored as *bytea* data in a format supported by the Pillow Python library) using
-the specified model, which can be either a local directory or a library from Hugging Face. It will return the label and
-score for which there is the highest confidence:
+These function will classify an image (stored as *bytea* data or an external file in a format supported by the Pillow 
+Python library) using the specified model, which can be either a local directory or a library from Hugging Face. It 
+will return the label and score for which there is the highest confidence.
+
+This can be useful for searching or indexing data based on analysis of images; for example, consider an MRI scan that
+may or may not include markers of certain diseases.
 
 ```sql
 pg_marvin=# SELECT f.file, c.* FROM food f, marvin.classify_image(image, model => '/path/to/hotdog-not-hotdog') AS c 
@@ -241,4 +244,18 @@ pg_marvin-# ;
  pizza1.jpg        | nothotdog | 0.9869404435157776
  calzone1.jpg      | nothotdog | 0.9942871928215027
 (10 rows)
+```
+
+```sql
+pg_marvin=# SELECT * from marvin.classify_image('/usr/local/pgsql/data/images/hotdog1.jpg', model => '/path/to/hotdog-not-hotdog');
+ label  |       score        
+--------+--------------------
+ hotdog | 0.9967953562736511
+(1 row)
+
+pg_marvin=# SELECT * from marvin.classify_image('/usr/local/pgsql/data/images/cheeseburger1.jpg', model => '/path/to/hotdog-not-hotdog');
+   label   |       score        
+-----------+--------------------
+ nothotdog | 0.9873936176300049
+(1 row)
 ```

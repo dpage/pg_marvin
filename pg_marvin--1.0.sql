@@ -108,7 +108,7 @@ GRANT EXECUTE ON FUNCTION @extschema@.translate_text(text, text, text, text) TO 
 COMMENT ON FUNCTION @extschema@.translate_text(text, text, text, text) IS 'Translate a text string from one language to another.';
 
 --
--- Classify an image from bytea data (internal)
+-- Classify an image from bytea data
 --
 CREATE OR REPLACE function @extschema@.classify_image(image IN bytea, model IN text, label OUT text, score OUT float)
     RETURNS record
@@ -138,3 +138,36 @@ $BODY$;
 REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.classify_image(bytea, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION @extschema@.classify_image(bytea, text) TO CURRENT_USER;
 COMMENT ON FUNCTION @extschema@.classify_image(bytea, text) IS 'Classify an image from bytea data.';
+
+
+--
+-- Classify an image from an external file
+--
+CREATE OR REPLACE function @extschema@.classify_image(image IN text, model IN text, label OUT text, score OUT float)
+    RETURNS record
+    LANGUAGE plpython3u
+AS $BODY$
+from PIL import Image
+from transformers import pipeline
+import io
+import json
+
+img_data = Image.open(image)
+vision_classifier = pipeline("image-classification", model=model, framework='pt')
+
+preds = vision_classifier(images=img_data)
+
+score = 0
+final = {}
+
+for pred in preds:
+    if pred['score'] > score:
+        score = pred['score']
+        final = pred
+
+return final
+$BODY$;
+
+REVOKE ALL PRIVILEGES ON FUNCTION @extschema@.classify_image(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION @extschema@.classify_image(text, text) TO CURRENT_USER;
+COMMENT ON FUNCTION @extschema@.classify_image(text, text) IS 'Classify an image from an external file.';

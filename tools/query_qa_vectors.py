@@ -35,6 +35,13 @@ def read_command_line():
     return args
 
 
+def connect(args):
+    c = psycopg.connect('host={} port={} dbname={} user={}'.format(args.host, args.port, args.db, args.user))
+    register_vector(c)
+
+    return c
+
+
 def run_query(query, store, top_k):
     # Encode the query, and use it to find the closest matches in the database
     xq = retriever.encode([query]).tolist()
@@ -55,10 +62,10 @@ def format_query(query, context):
 
 def generate_answer(query, max_length):
     # Tokenize the query to get the input IDs
-    inputs = tokenizer([query], return_tensors="pt").to(device)
+    inputs = tokenizer([query], return_tensors='pt').to(device)
 
     # Use the generator to predict output IDs
-    ids = generator.generate(inputs["input_ids"], num_beams=4,
+    ids = generator.generate(inputs['input_ids'], num_beams=4,
                              length_penalty=2.0,
                              max_length=max_length,
                              min_length=5,
@@ -73,25 +80,17 @@ def generate_answer(query, max_length):
 if __name__ == '__main__':
     args = read_command_line()
 
-    #
-    # Connect to the database, and create our objects
-    #
-    conn = psycopg.connect('host={} port={} dbname={} user={}'.format(args.host, args.port, args.db, args.user))
-    register_vector(conn)
+    # Connect to the database
+    conn = connect(args)
 
-    #
     # We use the same model we used to generate our embeddings
     # originally to create the query to search the database.
-    #
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    retriever = SentenceTransformer('flax-sentence-embeddings/all_datasets_v3_mpnet-base', device=device)
 
-    retriever = SentenceTransformer("flax-sentence-embeddings/all_datasets_v3_mpnet-base", device=device)
-
-    #
     # We'll use the BART tokenizer and generator to write the
     # answer text from us, given the context retrieved from the
     # database.
-    #
     tokenizer = BartTokenizer.from_pretrained('vblagoje/bart_lfqa')
     generator = BartForConditionalGeneration.from_pretrained('vblagoje/bart_lfqa').to(device)
 
@@ -113,7 +112,5 @@ if __name__ == '__main__':
             textwrap.fill(summary, width=78, initial_indent='    ', subsequent_indent='    ')))
     print('===============================================================================')
 
-    #
     # Cleanup
-    #
     conn.close()

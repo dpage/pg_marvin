@@ -31,6 +31,138 @@ that is found in the PATH.
 
 ## Tools
 
+### load_qa_vectors.py
+
+This script will connect to a PostgreSQL database, and load embedding vectors
+from the specified document into a table. Vectors are generated using the
+_flax-sentence-embeddings/all_datasets_v3_mpnet-base_ model from HuggingFace,
+and are intended to be used for text generation when answering questions.
+
+The pgvector PostgreSQL extension is used to provide the vector datatype and
+operators and indexing methods (although it does not currently use an index).
+
+This script is used in conjunction with _query_qa_vectors.py_ which will use
+the resulting embeddings to answer questions.
+
+The input document can be either a text file or a PDF. The script will 
+do it's best to break down the text into paragraphs (in a quite naive way)
+and will generate and store embeddings for all paragraphs that are over
+20 tokens long.
+
+The available options are follows:
+
+```shell
+python3 load_qa_vectors.py --help
+usage: load_qa_vectors.py [-h] [-c] [-o HOST] [-p PORT] [-d DB] [-u USER] store file
+
+Preprocess and load vectors of text into PostgreSQL.
+
+positional arguments:
+  store                 the name of the vector store to use. Equates to a table in PostgreSQL
+  file                  the file to load text from
+
+options:
+  -h, --help            show this help message and exit
+  -c, --clear           clear existing data from the store before loading
+  -o HOST, --host HOST  the hostname or IP address of the PostgreSQL server (default: 127.0.0.1)
+  -p PORT, --port PORT  the port number for the PostgreSQL server (default: 5432)
+  -d DB, --db DB        the name of the database to use (default: postgres)
+  -u USER, --user USER  the name of the database to use (default: postgres)
+```
+
+An example of the usage of the script is shown below:
+
+```shell
+python3 load_qa_vectors.py -d pg_marvin pgdocs /Users/dpage/postgres.txt
+Generating embeddings: 100%|██████████████████████████████████████████████████████████████| 58/58 [05:52<00:00,  6.07s/it]
+Loading data         : 100%|██████████████████████████████████████████████████████| 14626/14626 [00:05<00:00, 2615.17it/s]
+```
+
+### query_qa_vectors.py
+
+This script is used to answer a question, with the text being generated from
+the embedding vectors stored by _load_qa_vetors.py_. 
+
+To operate, it will use the _flax-sentence-embeddings/all_datasets_v3_mpnet-base_
+to generate an embedding vector for the question being asked. That vector is 
+then used to query the PostgreSQL database to find the most relevant paragraphs
+of text from the original material.
+
+This data is then passed into the _vblagoje/bart_lfqa_ model which has been
+trained to answer questions given the input question and contextual text.
+For reasons that have not been explored in depth, this model seems to always
+generate text up to _max_length_ tokens, and will cut off the output 
+mid-sentence or descend into gibberish or repetition if the length is set too
+high.
+
+To overcome this, the output can optionally be passed to HuggingFace's 
+_summarization_ pipeline using the _sshleifer/distilbart-cnn-12-6_ model
+to produce more useful output.
+
+The available options are follows:
+
+```shell
+python3 query_qa_vectors.py --help
+usage: query_qa_vectors.py [-h] [-m MAX] [-s] [-t TOP_K] [-o HOST] [-p PORT] [-d DB] [-u USER] store question
+
+Ask a question to be answered from vectors of text stored in PostgreSQL.
+
+positional arguments:
+  store                 the name of the vector store to use. Equates to a table in PostgreSQL
+  question              the question to be answered
+
+options:
+  -h, --help            show this help message and exit
+  -m MAX, --max MAX     maximum length of the output in tokens (default: 100)
+  -s, --summary         include summarised output
+  -t TOP_K, --top_k TOP_K
+                        number of top results to consider
+  -o HOST, --host HOST  the hostname or IP address of the PostgreSQL server (default: 127.0.0.1)
+  -p PORT, --port PORT  the port number for the PostgreSQL server (default: 5432)
+  -d DB, --db DB        the name of the database to use (default: postgres)
+  -u USER, --user USER  the name of the database to use (default: postgres)```
+```
+
+An example of the usage of the script is shown below:
+
+```shell
+python3 ./query_qa_vectors.py --summary -d pg_marvin pgdocs "What is PostgreSQL?"
+== Result =====================================================================
+Question: 
+    What is PostgreSQL?
+
+Answer: 
+    PostgreSQL is a relational database management system (RDBMS). That means
+    it is a system for managing data stored in relations. Relation is a
+    mathematical term for describing how data is organized in a database. For
+    example, if you want to store data in a table, you can store it in a row,
+    a column, or a column. You can also store the data in rows, columns, or
+    columns. A relational database is just a way of organizing data in
+    relation to other data. For instance, if I want to record the location of
+    a person, I can store that information in a column in PostgreSQL. If I
+    wanted to store a person's name, I could store that data in the column
+    "John Doe". If I needed to store the name of a car, I would store that in
+    the columns "John" and "Car". PostgreSQL is an ORDBMS, which means that it
+    is an object-oriented database. This means that instead of storing
+
+Summary: 
+     Postgres is a relational database management system (RDBMS) That means it
+    is a system for managing data stored in relations . Relation is a
+    mathematical term for describing how data is organized in a database . For
+    example, if you want to store data in a table, you can store it in a row,
+    a column, or a column .
+===============================================================================
+```
+
+It should be noted of course, that whilst not entirely wrong, the answer given
+here is far from perfect. The models in use have not had any fine-tuning on
+database or PostgreSQL related topics, and the vector embeddings that have been
+loaded into the database consist only of single copy of the PostgreSQL 
+documentation - hastily pre-processed to demonstrate the technology. It would 
+certainly be possible to improve the quality of the output, however this work
+is intended to show how PostgreSQL can be used in such systems, not to re-create
+ChatGPT!
+
 ### train_image_classifier.py
 
 This script will train an image classifier model, based on images stored in

@@ -17,7 +17,7 @@ def read_command_line():
 
     parser.add_argument('question', help='the question to be answered')
 
-    parser.add_argument('-m', '--max', default=100, help='maximum length of the output in tokens (default: 100)')
+    parser.add_argument('-m', '--max', default=200, help='maximum length of the output in tokens (default: 200)')
 
     parser.add_argument('-s', '--summary', action='store_true', help='include summarised output')
 
@@ -43,6 +43,11 @@ def connect(args):
 
 
 def run_query(query, store, top_k):
+    # We use the same model we used to generate our embeddings
+    # originally to create the query to search the database.
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    retriever = SentenceTransformer('flax-sentence-embeddings/all_datasets_v3_mpnet-base', device=device)
+
     # Encode the query, and use it to find the closest matches in the database
     xq = retriever.encode([query]).tolist()
     res = conn.execute('SELECT passage_text FROM {} ORDER BY embedding <-> %s::vector LIMIT %s'.format(store),
@@ -83,14 +88,10 @@ if __name__ == '__main__':
     # Connect to the database
     conn = connect(args)
 
-    # We use the same model we used to generate our embeddings
-    # originally to create the query to search the database.
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    retriever = SentenceTransformer('flax-sentence-embeddings/all_datasets_v3_mpnet-base', device=device)
-
     # We'll use the BART tokenizer and generator to write the
     # answer text from us, given the context retrieved from the
     # database.
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     tokenizer = BartTokenizer.from_pretrained('vblagoje/bart_lfqa')
     generator = BartForConditionalGeneration.from_pretrained('vblagoje/bart_lfqa').to(device)
 
@@ -99,7 +100,7 @@ if __name__ == '__main__':
     answer = generate_answer(result, args.max)
 
     if args.summary:
-        summarizer = pipeline('summarization')
+        summarizer = pipeline('summarization', model='sshleifer/distilbart-cnn-12-6')
         summary = summarizer(answer)[0]['summary_text']
 
     print('== Result =====================================================================')

@@ -78,6 +78,9 @@ Generating embeddings: 100%|█████████████████�
 Loading data         : 100%|██████████████████████████████████████████████████████| 14626/14626 [00:05<00:00, 2615.17it/s]
 ```
 
+Note that this script is based on the work found in this 
+[Colab Notebook](https://colab.research.google.com/github/pinecone-io/examples/blob/master/learn/search/question-answering/abstractive-question-answering.ipynb).
+
 ### query_qa_vectors.py
 
 This script is used to answer a question, with the text being generated from
@@ -162,6 +165,9 @@ documentation - hastily pre-processed to demonstrate the technology. It would
 certainly be possible to improve the quality of the output, however this work
 is intended to show how PostgreSQL can be used in such systems, not to re-create
 ChatGPT!
+
+Note that this script is based on the work found in this 
+[Colab Notebook](https://colab.research.google.com/github/pinecone-io/examples/blob/master/learn/search/question-answering/abstractive-question-answering.ipynb).
 
 ### train_image_classifier.py
 
